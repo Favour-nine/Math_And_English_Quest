@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Last Exit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;900&family=Barlow:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* VOICE: tense, cinematic lockdown — a timed mission for teams, never childish.
+   IDEA: the facility's own security terminal and blast door control panel.
+   PICTURE: a blast door whose five bolt lamps turn green as each lock is cracked.
+   COLOUR and TYPE: concrete charcoal, emergency red, hazard-stripe yellow; stencil signage titles, Barlow body, mono readouts.
+   LAYOUT: HUD bar with timer and hints; door + evidence log beside the live challenge; stacks on phones. */
+:root{color-scheme:dark;--bg:#141615;--p:#1d201e;--p2:#262a27;--line:#3a403c;--ink:#ece8df;--dim:#a8a399;--red:#e5322d;--red2:#7a1715;--haz:#f2c230;--ok:#5fd38d;
+--st:'Big Shoulders Stencil Display',Impact,sans-serif;--mono:'Share Tech Mono',ui-monospace,monospace}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:radial-gradient(1200px 600px at 70% -10%,#2a1514 0,transparent 60%),repeating-linear-gradient(90deg,#161817 0 2px,#141615 2px 6px);color:var(--ink);font:17px/1.55 Barlow,system-ui,sans-serif;overflow-x:clip;min-height:100vh}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px);z-index:50}
+h1,h2,h3{font-family:var(--st);font-weight:900;line-height:1.05;margin:0;text-wrap:balance;letter-spacing:.01em}
+button{font:inherit;color:inherit;cursor:pointer}
+input{font:inherit}
+.haz{height:10px;background:repeating-linear-gradient(-45deg,var(--haz) 0 14px,#111 14px 28px)}
+/* HUD */
+.hud{position:sticky;top:0;z-index:20;background:#0f1110ee;backdrop-filter:blur(4px)}
+.hudrow{display:flex;align-items:center;gap:14px;padding:10px max(3vw,14px);flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;background:none;border:0;padding:0}
+.logo h1{font-size:30px;color:var(--ink)}
+.logo .beacon{width:14px;height:14px;border-radius:50%;background:var(--red);box-shadow:0 0 14px var(--red);animation:pulse 1.2s infinite}
+.team{color:var(--dim);font-size:15px}
+.sp{flex:1}
+.timer{font-family:var(--mono);font-size:36px;line-height:1;padding:6px 14px;border:2px solid var(--line);background:#000;color:var(--ok);min-width:150px;text-align:center}
+.timer.warn{color:var(--red);border-color:var(--red);animation:pulse 1s infinite}
+.timer.over{color:var(--red)}
+.chip{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--line);background:var(--p);font-size:15px;min-height:44px}
+.dots i{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--haz);margin-right:3px;box-shadow:0 0 8px #f2c23088}
+.dots i.used{background:#333;box-shadow:none}
+.iconbtn{min-height:44px;min-width:44px;border:1px solid var(--line);background:var(--p)}
+@keyframes pulse{50%{opacity:.45}}
+/* main grid */
+.wrap{display:grid;grid-template-columns:300px minmax(0,1fr);gap:22px;padding:22px max(3vw,14px) 40px;max-width:1300px;margin:0 auto}
+.side{display:grid;gap:16px;align-content:start}
+.box{background:var(--p);border:1px solid var(--line);position:relative}
+.box::before,.box::after{content:"";position:absolute;width:16px;height:16px;border:2px solid var(--haz);pointer-events:none}
+.box::before{top:-2px;left:-2px;border-right:0;border-bottom:0}.box::after{bottom:-2px;right:-2px;border-left:0;border-top:0}
+.doorbox{padding:14px}
+.doorbox svg{width:100%;height:auto;display:block}
+.lamp{transition:fill .4s}
+.lamp.on{fill:var(--ok);filter:url(#glow)}
+.log{padding:14px 16px}
+.log h3{font-size:22px;margin-bottom:8px}
+.log ol{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.log li{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--p2);font-size:15px}
+.log li b{font-family:var(--mono);font-size:20px;color:var(--haz);white-space:nowrap}
+.log li.cur{outline:1px solid var(--red)}
+.log small{display:block;color:var(--dim);font-size:13px;margin-top:8px}
+/* stage panel */
+.panel{padding:clamp(18px,3vw,34px)}
+.crumbs{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--dim);font-size:15px;margin-bottom:10px}
+.pips{display:flex;gap:5px}
+.pips i{width:26px;height:6px;background:#3a3f3b}.pips i.d{background:var(--ok)}.pips i.c{background:var(--red)}
+.badge{font-size:13px;font-weight:700;padding:3px 9px;background:var(--red2);color:#ffd9d6}
+.badge.e{background:#24466b;color:#d6e8ff}.badge.l{background:#5a4a12;color:#ffefb8}
+.panel h2{font-size:clamp(34px,4.5vw,50px);margin:4px 0 12px}
+.story{border-left:4px solid var(--red);background:#2a1716;padding:12px 16px;margin:0 0 18px;font-style:italic;color:#f3d6d3}
+.prompt{max-width:68ch;margin:0 0 18px}
+.note{font-family:var(--mono);background:#e9e2cf;color:#222;padding:16px 20px;transform:rotate(-1deg);max-width:420px;box-shadow:6px 8px 0 #0006;margin:0 0 20px;font-size:20px}
+.note small{display:block;font-family:Barlow;font-size:14px;color:#555}
+.fields{display:grid;gap:14px;max-width:640px}
+.field label{display:block;font-weight:600;margin-bottom:6px}
+.field .q{color:var(--dim);font-style:italic;margin:0 0 8px}
+.inrow{display:flex;align-items:center;gap:8px}
+.inrow span{font-family:var(--mono);font-size:22px;color:var(--haz)}
+input[type=text],input[type=number]{width:100%;max-width:360px;min-height:50px;padding:10px 14px;background:#000;border:2px solid var(--line);color:var(--ok);font-family:var(--mono);font-size:22px;border-radius:0}
+input:focus,button:focus-visible{outline:3px solid var(--haz);outline-offset:2px}
+input.good{border-color:var(--ok)}input.bad{border-color:var(--red)}
+.actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:24px}
+.btn{min-height:50px;padding:10px 22px;border:0;background:var(--red);color:#fff;font-weight:700;font-size:17px;box-shadow:0 4px 0 var(--red2)}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 var(--red2)}
+.btn:disabled{background:#444;box-shadow:none;cursor:not-allowed;color:#aaa}
+.btn.ghost{background:transparent;border:2px solid var(--line);box-shadow:none;color:var(--ink)}
+.btn.go{background:#1f7a49;box-shadow:0 4px 0 #0f3d24}
+.fb{min-height:1.6em;font-weight:600}
+.fb.bad{color:#ff7b76}.fb.ok{color:var(--ok)}
+.hintbox{margin-top:16px;padding:12px 16px;border:1px dashed var(--haz);color:#ffe9a6;max-width:68ch}
+.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+/* fix-the-text */
+.msg{font-size:21px;line-height:2;background:#0b0c0c;border:1px solid var(--line);padding:18px 20px;max-width:760px;font-family:'Barlow',sans-serif}
+.w{padding:2px 3px;border:0;background:none;font-size:inherit;line-height:inherit;border-bottom:2px dotted transparent}
+.w:hover{border-bottom-color:var(--haz);background:#ffffff10}
+.w.sel{background:var(--haz);color:#111}
+.w.fx{color:var(--ok);border-bottom:2px solid var(--ok)}
+.w.fa{animation:flash .6s}
+@keyframes flash{50%{background:var(--red);color:#fff}}
+.choose{margin-top:14px;padding:14px;background:var(--p2);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.opt{min-height:46px;padding:8px 16px;border:2px solid var(--line);background:#111;font-size:18px}
+.opt:hover{border-color:var(--haz)}
+.opt.on{border-color:var(--haz);background:var(--haz);color:#111;font-weight:700}
+.tally{font-family:var(--mono);color:var(--haz);margin-top:10px}
+/* odd one out / mcq */
+.groups{display:grid;gap:14px}
+.grp{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grp .n{font-family:var(--mono);color:var(--dim);width:2.2em}
+.mq{padding:12px 0;border-bottom:1px solid var(--line)}
+.mq p{margin:0 0 8px;font-size:19px}
+/* order */
+.tray,.line{display:flex;flex-wrap:wrap;gap:10px;min-height:64px;padding:12px;border:2px dashed var(--line);margin-bottom:12px}
+.line{border-color:var(--haz);background:#0b0c0c}
+.piece{min-height:46px;padding:8px 14px;border:2px solid #555;background:#232725;font-size:17px;text-align:left}
+.piece b{color:var(--haz);font-family:var(--mono);margin-right:6px}
+.line .piece{border-color:var(--haz)}
+.placeholder{color:var(--dim);align-self:center}
+/* cipher */
+.ciph{display:grid;grid-template-columns:150px minmax(0,1fr);gap:20px;align-items:center;margin-bottom:18px}
+.ctext{font-family:var(--mono);font-size:clamp(26px,4vw,40px);color:var(--haz);letter-spacing:.12em;word-spacing:.3em}
+.wheel{overflow-x:auto;border:1px solid var(--line);background:#0b0c0c;padding:10px}
+.wheel table{border-collapse:collapse;font-family:var(--mono);font-size:18px}
+.wheel td,.wheel th{width:30px;text-align:center;padding:4px 0}
+.wheel th{font-weight:400;color:var(--dim);font-size:12px;padding-right:8px;text-align:right;width:auto;white-space:nowrap}
+.wheel tr:first-child td{color:var(--haz)}
+.wheel tr:last-child td{color:var(--ok);border-top:1px solid var(--line)}
+.slider{display:flex;align-items:center;gap:12px;margin:12px 0}
+.slider input{flex:1;max-width:420px;accent-color:var(--red);height:30px}
+.slider b{font-family:var(--mono);font-size:24px;width:2ch}
+/* keypad final */
+.codes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;max-width:640px}
+.codes label{display:block;text-align:center;color:var(--dim);font-size:14px;margin-bottom:4px}
+.codes input{text-align:center;max-width:none;font-size:30px}
+/* overlays */
+.ov{position:fixed;inset:0;z-index:40;background:#080909f2;display:grid;place-items:center;padding:20px;overflow:auto}
+.card{width:min(760px,100%);background:var(--p);border:1px solid var(--line);position:relative}
+.card .in{padding:clamp(20px,4vw,40px)}
+.card h2{font-size:clamp(40px,6vw,64px);margin-bottom:12px}
+.card p{max-width:62ch}
+.big{font-family:var(--mono);font-size:clamp(48px,9vw,84px);color:var(--haz);line-height:1;margin:8px 0}
+.rules{padding-left:1.2em;margin:0 0 18px}
+.rules li{margin-bottom:6px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.stat{background:var(--p2);padding:12px 14px}
+.stat b{display:block;font-family:var(--mono);font-size:28px;color:var(--haz)}
+.chk{display:flex;align-items:center;gap:10px;min-height:44px}
+.chk input{width:22px;height:22px;accent-color:var(--red)}
+.red{color:var(--red)}
+.door2{display:flex;justify-content:center;margin:10px 0 18px}
+.door2 svg{width:min(280px,70vw);height:auto}
+.leaf{transition:transform 2.4s cubic-bezier(.6,0,.2,1) .6s}
+.open .lf{transform:translateX(-62px)}.open .rt{transform:translateX(62px)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#000;border:2px solid var(--haz);padding:12px 20px;z-index:60;font-weight:600;max-width:90vw;text-align:center}
+.alarm-edge{position:fixed;inset:0;pointer-events:none;z-index:45;box-shadow:inset 0 0 90px #e5322d55;animation:pulse 1.4s infinite}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media(max-width:860px){.wrap{grid-template-columns:minmax(0,1fr)}.side{grid-template-columns:120px minmax(0,1fr)}.doorbox{padding:8px}.ciph{grid-template-columns:90px minmax(0,1fr)}}
+@media(max-width:600px){.logo h1{font-size:24px}.timer{font-size:28px;min-width:120px}.team{display:none}.codes{grid-template-columns:repeat(3,minmax(0,1fr))}.grid2{grid-template-columns:minmax(0,1fr)}.msg{font-size:19px}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="ov"></div>
+<script>
+{
+const $=s=>document.querySelector(s);
+const KEY='lastexit-v2';
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=s=>String(s).toLowerCase().replace(/[’']/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\b(a|an|the)\b/g,' ').replace(/\s+/g,' ').trim();
+const num=v=>{v=String(v).replace(/[£,\s]/g,'');return v===''?NaN:Number(v)};
+
+/* ---------- CONTENT ---------- */
+const ROOMS=[
+{name:'The Security System',short:'Security System',
+ intro:'Red lights flood the corridor. The main security terminal has crashed and the first lock is sealed. Get the power back, then crack the technician’s note.',
+ stages:[
+ {t:'multi',subj:'Maths',title:'Restore the power',prompt:'Three fuses have blown. Each one is labelled with a percentage problem. Solve all three to bring the terminal back online.',
+  fields:[['Fuse 1: 10% of 240',24],['Fuse 2: 25% of 60',15],['Fuse 3: 15% of 80',12]],
+  hint:'10% = divide by 10. 25% = a quarter (divide by 4). For 15%, find 10% and 5% (half of 10%), then add them.',ans:'24, 15, 12'},
+ {t:'num',subj:'Maths',title:'The technician’s note',note:['ORIGINAL PRICE: £85','DISCOUNT: 20%'],
+  prompt:'Calculate the final price after the discount. The final two digits of the price become code fragment 1.',pre:'£',a:68,code:true,
+  hint:'Find 10% of £85, double it to get 20%, then take that away from £85.',ans:'£68  →  code 68'},
+ {t:'fix',subj:'English',title:'Proofreading detective',
+  prompt:'This message was recovered from the security guard’s computer. Tap every word with a spelling, punctuation or grammar mistake and type the correct version. Submit when the message is perfect.',
+  text:'{the|The|Thee} security system {have|has|having} been damaged. {Their|There|They’re} is no way to open the doors from the inside, unless someone can find the emergency key. I {couldnt|couldn’t|could’nt|couldnt’} believe what was happening!',
+  hint:'There are 4 mistakes. Check: how a sentence must start; “system” is singular; Their / There; a missing apostrophe.',ans:'the→The, have→has, Their→There, couldnt→couldn’t'}
+ ]},
+{name:'The Mystery Room',short:'Mystery Room',
+ intro:'A door hisses open onto a dim room. On a steel table sit three objects, covered by a sheet. Only one of them will open the next lock.',
+ stages:[
+ {t:'text',subj:'Logic',title:'Three riddles',prompt:'Solve each riddle to name the three hidden objects.',
+  fields:[['Riddle A','I have hands but cannot clap. I have a face but cannot smile. I tell you something, but I never speak.',['clock','watch','wall clock','alarm clock','wristwatch']],
+          ['Riddle B','I can show you yourself, but I cannot think. I copy everything you do, but I never move first.',['mirror','reflection','looking glass']],
+          ['Riddle C','I have keys but no locks. I have a space but no room. You can enter, but you cannot go inside.',['keyboard','computer keyboard','keyboards']]],
+  hint:'A: you check it to know when lessons end. B: you look in it before leaving the house. C: you are probably typing near one right now.',ans:'clock, mirror, keyboard'},
+ {t:'num',subj:'Logic',title:'The keypad lock',prompt:'A message flickers on the keypad: “Count the letters in the answer to Riddle C.” That number is code fragment 2.',a:8,code:true,
+  hint:'Spell out the answer to Riddle C and count every letter.',ans:'KEYBOARD = 8 letters  →  code 8'},
+ {t:'odd',subj:'English',title:'Word association',prompt:'The sheet is lifted. Four rows of words are etched into the table. Choose the word that does NOT belong in each group. The supervisor may ask you to explain why.',
+  groups:[[['Their','There','They’re','Because'],3],[['Necessary','Essential','Important','Unnecessary'],3],[['Quickly','Slowly','Carefully','Beautiful'],3],[['Although','However','Because','Table'],3]],
+  hint:'Row 1: three of them sound the same. Row 2: one means the opposite. Row 3: three describe how something is done (adverbs). Row 4: three are connectives.',ans:'Because, Unnecessary, Beautiful, Table'},
+ {t:'cipher',subj:'Logic',title:'The note behind the clock',
+  prompt:'Taped to the back of the clock is a coded note. The clock’s hands are frozen. Use the code wheel to decode the note, then answer: where must you go next?',
+  ctext:'KHDG WR WKH JXDUG URRP',shiftAns:3,accept:['guard room','guardroom','guards room'],
+  hint:'Look where the hour hand points: 3. Each letter has been moved 3 places forward, so move each one 3 back (K → H).',ans:'HEAD TO THE GUARD ROOM  →  “guard room”'}
+ ]},
+{name:'The Guard’s Message',short:'Guard’s Message',
+ intro:'The guard room is empty. A chair is tipped over and a message is scrawled across the wall. Someone wrote it in a hurry, and the mistakes hide your next code.',
+ stages:[
+ {t:'fix',subj:'English',title:'SPaG detective',hideTotal:true,
+  prompt:'Find every spelling, punctuation and grammar mistake and correct it. Keep count: the number of corrections is your next code.',
+  text:'{Their|There|They’re} was a strange noise coming from the corridor. The guard {couldnt|couldn’t|could’nt} explain what had happened, so he checked the security {camera’s.|cameras.|cameras’.} ‘I think we should {of|have|off} left {earlier’|earlier,’|earlier.’} said Mia. The doors {was|were|where} locked from the outside.',
+  hint:'Look for: Their/There, a missing apostrophe, a plural that does not need an apostrophe, “should of”, missing punctuation before closing speech marks, and “doors was”.',ans:'There, couldn’t, cameras, have, earlier,’ , were (6 corrections)'},
+ {t:'num',subj:'English',title:'Count the corrections',prompt:'How many individual corrections did you make to the guard’s message? That number is code fragment 3.',a:6,code:true,
+  hint:'Count each word you changed in the last challenge, including the punctuation fix.',ans:'6  →  code 6'},
+ {t:'mcq',subj:'English',title:'Homophone hack',prompt:'The guard’s radio crackles with a broken transmission. Choose the right word for each gap to rebuild it.',
+  items:[['___ going to try the back door.',['There','Their','They’re'],2],['The guards left ___ keys on the desk.',['there','their','they’re'],1],['Put the torch over ___ by the vent.',['there','their','they’re'],0],['___ running out of time!',['Your','You’re','Yore'],1],['Is this ___ access card?',['your','you’re','yore'],0]],
+  hint:'They’re = they are. You’re = you are. Their / your = belonging to. There = a place.',ans:'They’re, their, there, You’re, your'}
+ ]},
+{name:'The Final Transport',short:'Final Transport',
+ intro:'Behind the guard room is a shuttle platform. An emergency transport can take you out, but the ticket machine’s price list is damaged.',
+ stages:[
+ {t:'mcq',subj:'Maths',title:'Damaged price list',note:['ADULT = CHILD + £4','3 ADULTS + 2 CHILDREN = £52'],
+  prompt:'Let the cost of a child ticket be x. Which equation matches the recovered information?',
+  items:[['Choose the equation:',['3x + 4 + 2x = 52','3(x + 4) + 2x = 52','3(x − 4) + 2x = 52','5x + 4 = 52'],1]],
+  hint:'An adult ticket is x + 4. Three adult tickets is 3 lots of (x + 4). Then add two child tickets.',ans:'3(x + 4) + 2x = 52'},
+ {t:'num',subj:'Maths',title:'Solve for x',prompt:'Solve 3(x + 4) + 2x = 52. How much is a child ticket?',pre:'£',a:8,
+  hint:'Expand the bracket: 3x + 12 + 2x = 52. Collect: 5x + 12 = 52. Subtract 12, then divide by 5.',ans:'x = 8 (child ticket £8)'},
+ {t:'num',subj:'Maths',title:'Adult ticket',prompt:'What is the price of an adult ticket? That number is code fragment 4.',pre:'£',a:12,code:true,
+  hint:'An adult ticket is £4 more than a child ticket.',ans:'£12  →  code 12'},
+ {t:'order',subj:'English',title:'Sentence surgery',prompt:'The platform’s instructions have been cut into pieces. Tap the pieces in the right order to rebuild a grammatically accurate paragraph.',
+  pieces:['because the emergency lights had stopped working.','The group decided to follow the arrows','which were painted along the floor,','They hoped the arrows would lead them to safety.'],labels:['A','B','C','D'],accept:[[1,2,0,3]],
+  hint:'Start with the piece that has a capital letter and names who is acting. The piece ending with a comma comes straight after it.',ans:'B, C, A, D'},
+ {t:'num',subj:'Maths',title:'Boarding the shuttle',prompt:'Your team buys 2 adult tickets and 4 child tickets. You have £60 between you. How much change do you get?',pre:'£',a:4,
+  hint:'2 × adult price + 4 × child price = total. Then take the total away from £60.',ans:'2×12 + 4×8 = 56, change £4'}
+ ]},
+{name:'The Master Control Room',short:'Master Control',
+ intro:'The shuttle drops you at the master control room. One last system stands between you and the exit. Screens flicker with security scores.',
+ stages:[
+ {t:'num',subj:'Maths',title:'The missing score',note:['SCORES: 12, 15, 17, ?, 20','MEAN OF ALL FIVE = 16'],
+  prompt:'Calculate the missing security score. It is code fragment 5.',a:16,code:true,
+  hint:'If the mean of 5 numbers is 16, they add up to 5 × 16 = 80. Add the four you know and subtract from 80.',ans:'80 − 64 = 16  →  code 16'},
+ {t:'multi',subj:'Maths',title:'System diagnostics',prompt:'Now that the set is complete (12, 15, 16, 17, 20), the system runs a diagnostic check. Enter the two values it asks for.',
+  fields:[['Median of the five scores',16],['Range of the five scores',8]],
+  hint:'Median = middle value when in order. Range = biggest − smallest.',ans:'Median 16, range 8'},
+ {t:'order',subj:'English',title:'The final message',prompt:'The final message on the screen has been scrambled. Put the words in order, choose the right end punctuation, then read the sentence aloud to your team.',
+  pieces:['ESCAPE','THE','IS','YOURS','NOW','FREEDOM','TO'],accept:[[1,5,6,0,2,3,4],[4,1,5,6,0,2,3]],punct:['.','!','?'],punctOk:['.','!'],
+  hint:'Start with “The freedom…”. It is a statement, not a question.',ans:'The freedom to escape is yours now.  (or “Now the freedom to escape is yours.”)'}
+ ]}
+];
+const CODES=[68,8,6,12,16];
+
+/* ---------- STATE ---------- */
+const fresh=()=>({phase:'setup',team:'',mins:45,pin:'1234',sound:true,signoff:false,endAt:0,paused:false,remain:0,hints:3,hintsUsed:0,room:0,stage:0,codes:[],hinted:{},wrong:0,lockUntil:0,streak:0,timeupShown:false,doneRemain:0,roomDone:false,beeped:{}});
+let S;try{S=JSON.parse(localStorage.getItem(KEY))||fresh()}catch(e){S=fresh()}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+let ui={key:''},overlay=null,teacherOpen=false,logoTaps=0;
+const remaining=()=>S.phase==='escaped'?S.doneRemain:S.paused?S.remain:S.endAt-Date.now();
+const fmt=ms=>{const neg=ms<0;ms=Math.abs(ms);const t=Math.floor(ms/1000),m=Math.floor(t/60),s=t%60;return(neg?'+':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')};
+
+/* ---------- SOUND ---------- */
+let ac;
+function tone(f,d,type='square',v=.05,w=0){if(!S.sound)return;try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();const t=ac.currentTime+w,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+d+.05)}catch(e){}}
+const sfx={click:()=>tone(880,.05,'square',.03),ok:()=>{tone(523,.15,'triangle',.08);tone(659,.15,'triangle',.08,.1);tone(784,.3,'triangle',.08,.2)},
+ bad:()=>{tone(140,.35,'sawtooth',.07);tone(110,.4,'sawtooth',.06,.15)},
+ unlock:()=>{[392,523,659,784,1046].forEach((f,i)=>tone(f,.25,'triangle',.08,i*.12))},
+ alarm:()=>{[0,.3,.6].forEach(w=>{tone(660,.2,'square',.05,w);tone(440,.2,'square',.05,w+.15)})}};
+
+/* ---------- DOOR SVG ---------- */
+function doorSVG(lit,cls=''){
+ const lamps=[0,1,2,3,4].map(i=>`<circle class="lamp ${lit[i]?'on':''}" cx="120" cy="${70+i*40}" r="9" fill="#5b1210" stroke="#000" stroke-width="2"/><text x="140" y="${75+i*40}" fill="#a8a399" font-family="Share Tech Mono" font-size="13">L${i+1}</text>`).join('');
+ return `<svg viewBox="0 0 240 300" class="${cls}" role="img" aria-label="Blast door with ${lit.filter(Boolean).length} of 5 locks open">
+ <defs><filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <linearGradient id="steel" x1="0" x2="1"><stop offset="0" stop-color="#4a4f4c"/><stop offset=".5" stop-color="#6b716d"/><stop offset="1" stop-color="#3c403e"/></linearGradient>
+ <pattern id="hz" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="10" height="20" fill="#f2c230"/><rect x="10" width="10" height="20" fill="#111"/></pattern></defs>
+ <rect x="6" y="6" width="228" height="288" fill="#0b0c0c" stroke="#3a403c" stroke-width="2"/>
+ <rect x="14" y="14" width="212" height="16" fill="url(#hz)"/>
+ <rect x="14" y="270" width="212" height="16" fill="url(#hz)"/>
+ <rect x="22" y="36" width="196" height="228" fill="#000"/>
+ <g class="leaf lf"><rect x="24" y="38" width="96" height="224" fill="url(#steel)"/><rect x="34" y="50" width="76" height="200" fill="none" stroke="#2a2d2b" stroke-width="3"/>
+ ${[0,1,2,3,4].map(i=>`<rect x="96" y="${64+i*40}" width="${lit[i]?6:30}" height="12" fill="#2a2d2b" style="transition:width .5s"/>`).join('')}</g>
+ <g class="leaf rt"><rect x="120" y="38" width="96" height="224" fill="url(#steel)"/><rect x="130" y="50" width="76" height="200" fill="none" stroke="#2a2d2b" stroke-width="3"/>
+ <rect x="160" y="40" width="4" height="220" fill="#ffffff14"/></g>
+ <line x1="120" y1="38" x2="120" y2="262" stroke="#111" stroke-width="2"/>
+ <g class="lampg">${lamps}</g>
+ </svg>`;
+}
+const litArr=()=>[0,1,2,3,4].map(i=>i<S.room||(i===S.room&&S.roomDone)||S.phase==='final'||S.phase==='escaped');
+
+/* ---------- RENDER ---------- */
+function render(){
+ if(S.phase==='setup')return showSetup();
+ if(S.phase==='brief')return showBrief();
+ const lit=litArr();
+ $('#app').innerHTML=`
+ <header class="hud"><div class="hudrow">
+  <button class="logo" data-act="logo" aria-label="The Last Exit"><span class="beacon"></span><h1>The Last Exit</h1></button>
+  <span class="team">${esc(S.team||'Team')}</span><span class="sp"></span>
+  <div class="chip" title="Team hints left">Hints <span class="dots">${[0,1,2].map(i=>`<i class="${i<S.hints?'':'used'}"></i>`).join('')}${S.hints>3?'+'+(S.hints-3):''}</span></div>
+  <button class="iconbtn" data-act="sound" aria-label="Toggle sound">${S.sound?'Sound on':'Sound off'}</button>
+  <div class="timer" id="timer">${fmt(remaining())}</div>
+ </div><div class="haz"></div></header>
+ <div class="wrap">
+  <aside class="side">
+   <div class="box doorbox">${doorSVG(lit)}</div>
+   <div class="box log"><h3>Escape sequence</h3><ol>${ROOMS.map((r,i)=>`<li class="${i===S.room&&S.phase==='play'?'cur':''}"><span>${i+1}. ${r.short}</span><b>${S.codes[i]!==undefined?S.codes[i]:'— —'}</b></li>`).join('')}</ol>
+   <small>Copy each code into your workbook as you unlock it.</small></div>
+  </aside>
+  <section class="box panel" id="stage"></section>
+ </div>
+ ${remaining()<300000&&S.phase!=='escaped'?'<div class="alarm-edge"></div>':''}`;
+ renderStage();
+ renderOverlay();
+}
+
+function renderStage(){
+ const el=$('#stage');if(!el)return;
+ const vals={};el.querySelectorAll('input[id]').forEach(i=>vals[i.id]=i.type==='range'?i.value:i.value);
+ if(S.phase==='final'||S.phase==='escaped'){el.innerHTML=finalHTML();restore(vals);return}
+ if(S.roomDone){el.innerHTML=`<div class="crumbs"><span>Room ${S.room+1} of 5</span></div><h2>Lock ${S.room+1} disengaged</h2><p class="prompt">Stand by for the next room…</p>`;return}
+ const R=ROOMS[S.room],st=R.stages[S.stage],key=S.room+'-'+S.stage;
+ if(ui.key!==key){ui={key,sel:null,fixed:{},alarms:0,odd:{},order:[],punct:'',mcq:{},shift:0};Object.keys(vals).forEach(k=>delete vals[k])}
+ const sb={Maths:'',English:'e',Logic:'l'}[st.subj];
+ el.innerHTML=`
+ <div class="crumbs"><span>Room ${S.room+1} of 5 · ${R.name}</span><span class="pips">${R.stages.map((_,i)=>`<i class="${i<S.stage?'d':i===S.stage?'c':''}"></i>`).join('')}</span><span class="badge ${sb}">${st.subj}</span></div>
+ ${S.stage===0?`<p class="story">${R.intro}</p>`:''}
+ <h2>${st.title}</h2>
+ ${st.note?`<div class="note">${st.note.map(n=>`<div>${n}</div>`).join('')}<small>— recovered note</small></div>`:''}
+ <p class="prompt">${st.prompt}</p>
+ <div id="body">${bodyHTML(st)}</div>
+ <div id="hintwrap">${S.hinted[key]?`<div class="hintbox"><b>Hint:</b> ${st.hint}</div>`:''}</div>
+ <div class="actions">
+  <button class="btn" id="submit" data-act="submit">Submit to terminal</button>
+  ${S.hinted[key]?'':`<button class="btn ghost" data-act="hint">Use a team hint (${S.hints} left)</button>`}
+  <span class="fb" id="fb" role="status" aria-live="polite"></span>
+ </div>`;
+ delete vals.fixin;restore(vals);lockUI();
+}
+function restore(vals){for(const k in vals){const i=document.getElementById(k);if(i)i.value=vals[k]}}
+
+function bodyHTML(st){
+ if(st.t==='num')return `<div class="field"><div class="inrow">${st.pre?`<span>${st.pre}</span>`:''}<input type="text" inputmode="decimal" id="a0" autocomplete="off" aria-label="Your answer" placeholder="Answer"></div></div>`;
+ if(st.t==='multi')return `<div class="fields">${st.fields.map((f,i)=>`<div class="field"><label for="a${i}">${f[0]}</label><input type="text" inputmode="decimal" id="a${i}" autocomplete="off"></div>`).join('')}</div>`;
+ if(st.t==='text')return `<div class="fields">${st.fields.map((f,i)=>`<div class="field"><label for="a${i}">${f[0]}</label><p class="q">“${f[1]}”</p><input type="text" id="a${i}" autocomplete="off" placeholder="What am I?"></div>`).join('')}</div>`;
+ if(st.t==='fix'){
+  const tk=tokens(st.text);
+  let h=`<div class="msg">${tk.map((t,i)=>`<button class="w ${ui.fixed[i]?'fx':''} ${ui.sel===i?'sel':''}" data-act="word" data-i="${i}">${esc(ui.fixed[i]?t.ok:t.w)}</button>`).join(' ')}</div>`;
+  if(ui.sel!==null){const t=tk[ui.sel];
+   h+=`<div class="choose"><label for="fixin">Correct “${esc(t.w)}” to:</label><input type="text" id="fixin" value="${esc(t.w)}" autocomplete="off" spellcheck="false" style="max-width:260px"><button class="opt" data-act="fixopt">Apply correction</button><button class="opt" data-act="fixcancel">Cancel</button></div>`}
+  const n=Object.keys(ui.fixed).length;
+  h+=`<div class="tally">Corrections made: ${n} · False alarms: ${ui.alarms}</div><p style="color:var(--dim);font-size:15px">Tap a word, edit it in the box, then apply. Apostrophes and commas count.</p>`;
+  return h}
+ if(st.t==='odd')return `<div class="groups">${st.groups.map((g,gi)=>`<div class="grp"><span class="n">${gi+1}.</span>${g[0].map((w,wi)=>`<button class="opt ${ui.odd[gi]===wi?'on':''}" data-act="odd" data-g="${gi}" data-w="${wi}">${w}</button>`).join('')}</div>`).join('')}</div>`;
+ if(st.t==='mcq')return st.items.map((it,qi)=>`<div class="mq"><p>${it[0]}</p><div class="grp">${it[1].map((o,oi)=>`<button class="opt ${ui.mcq[qi]===oi?'on':''}" data-act="mcq" data-q="${qi}" data-o="${oi}">${o}</button>`).join('')}</div></div>`).join('');
+ if(st.t==='order'){
+  const lab=i=>st.labels?`<b>${st.labels[i]}</b>`:'';
+  return `<div class="line" aria-label="Your answer">${ui.order.length?ui.order.map((p,pos)=>`<button class="piece" data-act="unpick" data-p="${pos}" title="Tap to remove">${lab(p)}${st.pieces[p]}</button>`).join(''):'<span class="placeholder">Tap pieces below to build your answer here</span>'}${st.punct&&ui.punct?`<span class="piece">${ui.punct}</span>`:''}</div>
+  <div class="tray">${st.pieces.map((p,i)=>ui.order.includes(i)?'':`<button class="piece" data-act="pick" data-i="${i}">${lab(i)}${p}</button>`).join('')||'<span class="placeholder">All pieces placed</span>'}</div>
+  ${st.punct?`<div class="grp"><span>End punctuation:</span>${st.punct.map(p=>`<button class="opt ${ui.punct===p?'on':''}" data-act="punct" data-p="${p}" aria-label="punctuation ${p}">${p}</button>`).join('')}</div>`:''}
+  <div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="oreset">Reset pieces</button></div>`}
+ if(st.t==='cipher')return `
+  <div class="ciph"><svg viewBox="0 0 100 100" aria-label="A clock with its hands frozen at 3 o'clock"><circle cx="50" cy="50" r="46" fill="#e9e2cf" stroke="#111" stroke-width="4"/>${[...Array(12)].map((_,i)=>{const a=i*Math.PI/6;return `<line x1="${50+38*Math.sin(a)}" y1="${50-38*Math.cos(a)}" x2="${50+43*Math.sin(a)}" y2="${50-43*Math.cos(a)}" stroke="#111" stroke-width="${i%3?2:4}"/>`}).join('')}<line x1="50" y1="50" x2="74" y2="50" stroke="#111" stroke-width="6" stroke-linecap="round"/><line x1="50" y1="50" x2="50" y2="14" stroke="#e5322d" stroke-width="3" stroke-linecap="round"/><circle cx="50" cy="50" r="4" fill="#111"/></svg>
+  <div class="ctext">${st.ctext}</div></div>
+  <div class="slider"><label for="shift">Code wheel shift</label><input type="range" id="shift" min="0" max="25" value="${ui.shift}"><b id="shiftv">${ui.shift}</b></div>
+  <div class="wheel"><table id="wheel">${wheelRows(ui.shift)}</table></div>
+  <div class="field" style="margin-top:18px"><label for="a0">Where must you go next?</label><input type="text" id="a0" autocomplete="off" placeholder="Decoded destination"></div>`;
+ return '';
+}
+const AZ='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const wheelRows=s=>`<tr><th>Code letter</th>${[...AZ].map(c=>`<td>${c}</td>`).join('')}</tr><tr><th>Real letter</th>${[...AZ].map((c,i)=>`<td>${AZ[(i-s+26)%26]}</td>`).join('')}</tr>`;
+function tokens(text){const out=[];text.replace(/\{([^}]+)\}|(\S+)/g,(m,b,w)=>{if(b){const p=b.split('|');out.push({w:p[0],ok:p[1],opts:p.slice(1),err:true})}else out.push({w,ok:w,err:false})});return out}
+function shuffle(a,seed){return a.map((v,i)=>[v,Math.sin(seed*31+i*17)]).sort((x,y)=>x[1]-y[1]).map(x=>x[0])}
+
+function finalHTML(){
+ return `<div class="crumbs"><span>Exit door</span><span class="badge l">Final escape</span></div>
+ <h2>The final escape</h2>
+ <p class="story">Five lamps glow green. The blast door’s keypad wakes up: “ENTER ESCAPE SEQUENCE.” One wrong digit and the door locks for longer.</p>
+ <p class="prompt">Enter your five codes in the correct order, from your workbook.</p>
+ <div class="codes">${CODES.map((_,i)=>`<div><label for="k${i}">Lock ${i+1}</label><input type="text" inputmode="numeric" id="k${i}" autocomplete="off"></div>`).join('')}</div>
+ <div class="actions"><button class="btn go" id="submit" data-act="final">Open the door</button><span class="fb" id="fb" role="status" aria-live="polite"></span></div>`;
+}
+
+/* ---------- CHECKING ---------- */
+function check(st){
+ const v=i=>(document.getElementById('a'+i)||{}).value||'';
+ if(st.t==='num'){return num(v(0))===st.a||'Access denied. That value is incorrect.'}
+ if(st.t==='multi'){let ok=0;st.fields.forEach((f,i)=>{const g=num(v(i))===f[1];if(g)ok++;mark(i,g)});return ok===st.fields.length||`${ok} of ${st.fields.length} correct. Check the red ones.`}
+ if(st.t==='text'){let ok=0;st.fields.forEach((f,i)=>{const g=f[2].map(norm).includes(norm(v(i)));if(g)ok++;mark(i,g)});return ok===st.fields.length||`${ok} of ${st.fields.length} riddles solved.`}
+ if(st.t==='fix'){const tk=tokens(st.text),need=tk.filter(t=>t.err).length,n=Object.keys(ui.fixed).length;return n===need||'System scan: the message still contains errors.'}
+ if(st.t==='odd'){let ok=st.groups.filter((g,i)=>ui.odd[i]===g[1]).length;if(Object.keys(ui.odd).length<st.groups.length)return'Pick one word in every row first.';return ok===st.groups.length||`${ok} of ${st.groups.length} rows correct.`}
+ if(st.t==='mcq'){if(Object.keys(ui.mcq).length<st.items.length)return'Answer every line first.';const ok=st.items.filter((it,i)=>ui.mcq[i]===it[2]).length;return ok===st.items.length||(st.items.length>1?`${ok} of ${st.items.length} correct.`:'Access denied. That equation does not match.')}
+ if(st.t==='order'){if(ui.order.length<st.pieces.length)return'Place every piece first.';const okO=st.accept.some(a=>a.join()===ui.order.join());if(st.punct){if(!ui.punct)return'Choose the end punctuation.';if(okO&&!st.punctOk.includes(ui.punct))return'Word order is right, but check the punctuation.'}return okO||'Access denied. That order does not make sense yet.'}
+ if(st.t==='cipher'){const a=norm(v(0));return st.accept.some(x=>a.includes(x))||'That destination is not on the facility map.'}
+ return true;
+}
+function mark(i,g){const e=document.getElementById('a'+i);if(e){e.classList.toggle('good',g);e.classList.toggle('bad',!g)}}
+function locked(){return Date.now()<S.lockUntil}
+function lockUI(){const b=$('#submit');if(!b)return;const l=S.lockUntil-Date.now();if(l>0){b.disabled=true;b.textContent=`Terminal locked ${Math.ceil(l/1000)}s`}else if(b.disabled){b.disabled=false;b.textContent=S.phase==='final'?'Open the door':'Submit to terminal'}}
+function deny(msg){S.wrong++;S.streak++;S.lockUntil=Date.now()+Math.min(5000*S.streak,20000);save();sfx.bad();const fb=$('#fb');if(fb){fb.className='fb bad';fb.textContent=msg}const p=$('#stage');p.classList.remove('shake');void p.offsetWidth;p.classList.add('shake');lockUI()}
+function pass(){
+ const st=ROOMS[S.room].stages[S.stage];S.streak=0;S.lockUntil=0;
+ if(st.code)S.codes[S.room]=st.a;
+ S.stage++;sfx.ok();
+ if(S.stage>=ROOMS[S.room].stages.length){S.roomDone=true;setTimeout(sfx.unlock,300);overlay='room'}
+ else toast(st.code?`Code fragment recorded: ${st.a}`:'Access granted');
+ save();render();
+}
+function toast(t){document.querySelectorAll('.toast').forEach(x=>x.remove());const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2200)}
+
+/* ---------- OVERLAYS ---------- */
+function showSetup(){
+ $('#app').innerHTML='';
+ $('#ov').innerHTML=`<div class="ov"><div class="card box"><div class="haz"></div><div class="in">
+ <h2>The Last Exit</h2><p>Supervisor setup. Fill this in before handing the device to a team.</p>
+ <div class="fields">
+  <div class="field"><label for="s-team">Team name</label><input type="text" id="s-team" value="${esc(S.team)}" placeholder="e.g. Team Alpha"></div>
+  <div class="field"><label for="s-mins">Time limit (minutes)</label><input type="number" id="s-mins" value="${S.mins}" min="5" max="90"></div>
+  <div class="field"><label for="s-pin">Supervisor PIN (opens the control panel)</label><input type="text" id="s-pin" value="${esc(S.pin)}" inputmode="numeric"></div>
+  <label class="chk"><input type="checkbox" id="s-sign" ${S.signoff?'checked':''}> Supervisor must enter the PIN to unlock each new room</label>
+  <label class="chk"><input type="checkbox" id="s-snd" ${S.sound?'checked':''}> Sound effects</label>
+ </div>
+ <p style="color:var(--dim);font-size:15px">During the game, press Shift + T or tap the title five times to open the supervisor panel (answers, add time, pause, skip, extra hints).</p>
+ <div class="actions"><button class="btn" data-act="setupgo">Continue to briefing</button></div>
+ </div></div></div>`;
+}
+function showBrief(){
+ $('#app').innerHTML='';
+ $('#ov').innerHTML=`<div class="ov"><div class="card box"><div class="haz"></div><div class="in">
+ <p class="red" style="font-family:var(--mono);margin:0">Classified: emergency lockdown</p>
+ <h2>Your mission</h2>
+ <p>You and your team have entered a secure underground facility. An emergency lockdown has been triggered. All exits are sealed and the security system has activated <b>five digital locks</b>.</p>
+ <p>You have <b>${S.mins} minutes</b> to solve the challenges, discover the five lock codes and escape. Work together, think creatively and don’t assume every clue is as straightforward as it looks.</p>
+ <h3 style="font-size:26px;margin:18px 0 8px">The rules</h3>
+ <ul class="rules">
+  <li>Solve the maths and English challenges in each room. The terminal checks every answer before you move on.</li>
+  <li>Each room unlocks a code. Write it in your workbook.</li>
+  <li>Your team has <b>3 hints</b> for the whole game. Use them wisely.</li>
+  <li>Wrong answers lock the terminal, and each mistake in a row locks it for longer.</li>
+  <li>To escape, enter all five codes on the blast door, then prove to the supervisor how you cracked the system.</li>
+ </ul>
+ <div class="actions"><button class="btn" data-act="start">Begin lockdown</button></div>
+ </div></div></div>`;
+}
+function renderOverlay(){
+ const o=$('#ov');
+ if(teacherOpen)return teacherHTML();
+ if(overlay==='pin'){o.innerHTML=`<div class="ov"><div class="card box"><div class="in">
+  <h2>Supervisor access</h2><div class="field"><label for="t-pin">Enter PIN</label><input type="text" id="t-pin" inputmode="numeric" autocomplete="off"></div>
+  <div class="actions"><button class="btn" data-act="pinok">Open panel</button><button class="btn ghost" data-act="closeov">Cancel</button><span class="fb bad" id="pinfb"></span></div></div></div></div>`;setTimeout(()=>$('#t-pin')?.focus(),50);return}
+ if(S.phase==='escaped'){o.innerHTML=escapedHTML();setTimeout(()=>{const d=$('.door2 svg');d&&d.classList.add('open')},200);return}
+ if(overlay==='room'||S.roomDone){
+  const i=S.room,nx=ROOMS[i+1];
+  o.innerHTML=`<div class="ov"><div class="card box"><div class="haz"></div><div class="in">
+  <p class="red" style="font-family:var(--mono);margin:0">Lock ${i+1} of 5 disengaged</p>
+  <h2>${ROOMS[i].name}: cleared</h2>
+  <p>Code fragment ${i+1}</p><div class="big">${S.codes[i]}</div>
+  <p><b>Write this code in your workbook now.</b></p>
+  <p style="color:var(--dim)">Next: ${nx?nx.name:'the blast door'}.</p>
+  ${S.signoff?`<div class="field"><label for="so-pin">Supervisor check: PIN required to continue</label><input type="text" id="so-pin" inputmode="numeric" autocomplete="off"></div>`:''}
+  <div class="actions"><button class="btn" data-act="nextroom">${nx?'Enter the next room':'Go to the blast door'}</button><span class="fb bad" id="sofb"></span></div>
+  </div></div></div>`;return}
+ if(overlay==='timeup'){o.innerHTML=`<div class="ov"><div class="card box"><div class="haz"></div><div class="in">
+  <h2 class="red">Time’s up</h2><p>The lockdown timer has hit zero. The facility is sealed… but the supervisor is letting you keep working in overtime. The timer will now count up.</p>
+  <div class="actions"><button class="btn" data-act="closeov">Keep going</button></div></div></div></div>`;return}
+ if(overlay==='hint'){o.innerHTML=`<div class="ov"><div class="card box"><div class="in">
+  <h2>Use a hint?</h2><p>Your team has <b>${S.hints}</b> hint${S.hints===1?'':'s'} left for the whole game. Agree as a team before you spend one.</p>
+  <div class="actions"><button class="btn" data-act="hintyes">Yes, use one</button><button class="btn ghost" data-act="closeov">Not yet</button></div></div></div></div>`;return}
+ if(overlay==='nohint'){o.innerHTML=`<div class="ov"><div class="card box"><div class="in">
+  <h2>No hints left</h2><p>Your team has used all three hints. Ask the supervisor if you are truly stuck.</p>
+  <div class="actions"><button class="btn" data-act="closeov">OK</button></div></div></div></div>`;return}
+ if(overlay==='pin'){o.innerHTML=`<div class="ov"><div class="card box"><div class="in">
+  <h2>Supervisor access</h2><div class="field"><label for="t-pin">Enter PIN</label><input type="text" id="t-pin" inputmode="numeric" autocomplete="off"></div>
+  <div class="actions"><button class="btn" data-act="pinok">Open panel</button><button class="btn ghost" data-act="closeov">Cancel</button><span class="fb bad" id="pinfb"></span></div></div></div></div>`;setTimeout(()=>$('#t-pin')?.focus(),50);return}
+ o.innerHTML='';
+}
+function teacherHTML(){
+ const st=S.phase==='play'&&!S.roomDone?ROOMS[S.room].stages[S.stage]:null;
+ $('#ov').innerHTML=`<div class="ov"><div class="card box"><div class="haz"></div><div class="in">
+ <h2>Supervisor panel</h2>
+ <p><b>${esc(S.team||'Team')}</b> · ${S.phase==='play'?`Room ${S.room+1}, stage ${S.stage+1}: ${st.title}`:S.phase}</p>
+ ${st?`<div class="hintbox"><b>Answer:</b> ${st.ans}</div>`:''}
+ <p style="color:var(--dim)">Escape sequence: ${CODES.join(' · ')} · Wrong attempts: ${S.wrong} · Hints used: ${S.hintsUsed}</p>
+ <div class="actions">
+  <button class="btn ghost" data-act="t-add">+5 min</button><button class="btn ghost" data-act="t-sub">−5 min</button>
+  <button class="btn ghost" data-act="t-pause">${S.paused?'Resume timer':'Pause timer'}</button>
+  <button class="btn ghost" data-act="t-hint">+1 hint</button>
+  ${st?'<button class="btn ghost" data-act="t-skip">Skip this stage</button>':''}
+  <button class="btn ghost" data-act="t-unlock">Clear lockout</button>
+ </div>
+ <div class="actions"><button class="btn" data-act="t-close">Close panel</button><button class="btn ghost" data-act="t-reset" id="resetbtn">Reset game for a new team</button></div>
+ </div></div></div>`;
+}
+function escapedHTML(){
+ const r=S.doneRemain,rank=r>600000&&S.hintsUsed<=1?'Master escapists':r>0?'Elite agents':'Survivors (in overtime)';
+ return `<div class="ov"><div class="card box"><div class="haz"></div><div class="in">
+ <div class="door2">${doorSVG([1,1,1,1,1])}</div>
+ <h2>You escaped!</h2>
+ <p><b>${esc(S.team||'Your team')}</b>: ${rank}.</p>
+ <div class="grid2"><div class="stat">Time ${r>=0?'remaining':'over'}<b>${fmt(r).replace('+','')}</b></div><div class="stat">Hints used<b>${S.hintsUsed}</b></div><div class="stat">Wrong attempts<b>${S.wrong}</b></div><div class="stat">Escape sequence<b>${CODES.join('-')}</b></div></div>
+ <h3 style="font-size:26px;margin:22px 0 8px">Prove you cracked the system</h3>
+ <p>Take your workbook to the supervisor. Explain <b>at least one maths calculation</b> and <b>one English correction</b> to complete your escape.</p>
+ <p style="color:var(--dim);font-size:15px">Supervisor: press Shift + T to reset for the next team.</p>
+ </div></div></div>`;
+}
+
+/* ---------- EVENTS ---------- */
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;
+ if(!['sound'].includes(a))sfx.click();
+ const st=S.phase==='play'&&!S.roomDone?ROOMS[S.room].stages[S.stage]:null;
+ switch(a){
+ case'setupgo':S.team=$('#s-team').value.trim();S.mins=Math.max(5,Math.min(90,parseInt($('#s-mins').value)||45));S.pin=$('#s-pin').value.trim()||'1234';S.signoff=$('#s-sign').checked;S.sound=$('#s-snd').checked;S.phase='brief';save();render();break;
+ case'start':S.phase='play';S.endAt=Date.now()+S.mins*60000;S.hints=3;save();$('#ov').innerHTML='';sfx.alarm();render();break;
+ case'sound':S.sound=!S.sound;save();b.textContent=S.sound?'Sound on':'Sound off';break;
+ case'logo':if(++logoTaps>=5){logoTaps=0;overlay='pin';renderOverlay()}setTimeout(()=>logoTaps=0,3000);break;
+ case'submit':if(locked()||!st)return;{const r=check(st);r===true?pass():deny(r)}break;
+ case'final':{if(locked())return;let ok=0;CODES.forEach((c,i)=>{const el=$('#k'+i),g=num(el.value)===c;el.classList.toggle('good',g);el.classList.toggle('bad',!g);if(g)ok++});
+  if(ok===5){S.doneRemain=remaining();S.phase='escaped';save();sfx.unlock();setTimeout(sfx.ok,900);render()}else deny(`Sequence rejected. ${ok} of 5 locks accepted.`)}break;
+ case'hint':overlay=S.hints>0?'hint':'nohint';renderOverlay();break;
+ case'hintyes':S.hints--;S.hintsUsed++;S.hinted[ui.key]=true;overlay=null;save();renderOverlay();renderStage();break;
+ case'closeov':overlay=null;renderOverlay();break;
+ case'nextroom':if(S.signoff){const p=$('#so-pin');if(!p||p.value.trim()!==S.pin){$('#sofb').textContent='Incorrect PIN';sfx.bad();return}}
+  S.roomDone=false;overlay=null;S.room++;S.stage=0;if(S.room>=5){S.room=4;S.phase='final'}save();render();window.scrollTo(0,0);break;
+ case'word':{const i=+b.dataset.i;if(ui.fixed[i])return;ui.sel=ui.sel===i?null:i;renderStage();const f=$('#fixin');f&&(f.focus(),f.select())}break;
+ case'fixcancel':ui.sel=null;renderStage();break;
+ case'fixopt':{const tk=tokens(st.text),i=ui.sel,t=tk[i],q=x=>String(x).replace(/[’‘]/g,"'").replace(/\s+/g,'').trim(),o=q(($('#fixin')||{}).value||'');
+  if(o===q(t.w)){ui.sel=null;renderStage();break}
+  ui.sel=null;
+  if(!t.err){ui.alarms++;renderStage();deny('False alarm: there was no mistake in that word.');break}
+  if(o===q(t.ok)){ui.fixed[i]=true;sfx.ok();renderStage()}else{renderStage();deny('That correction is not right yet. Try again.');const w=document.querySelector(`.w[data-i="${i}"]`);w&&w.classList.add('fa')}}break;
+ case'odd':ui.odd[b.dataset.g]=+b.dataset.w;renderStage();break;
+ case'mcq':ui.mcq[b.dataset.q]=+b.dataset.o;renderStage();break;
+ case'pick':ui.order.push(+b.dataset.i);renderStage();break;
+ case'unpick':ui.order.splice(+b.dataset.p,1);renderStage();break;
+ case'oreset':ui.order=[];ui.punct='';renderStage();break;
+ case'punct':ui.punct=b.dataset.p;renderStage();break;
+ case'pinok':if($('#t-pin').value.trim()===S.pin){overlay=null;teacherOpen=true;renderOverlay()}else{$('#pinfb').textContent='Incorrect PIN';sfx.bad()}break;
+ case't-close':teacherOpen=false;render();break;
+ case't-add':S.paused?S.remain+=300000:S.endAt+=300000;if(remaining()>0)S.timeupShown=false;save();teacherHTML();tick();break;
+ case't-sub':S.paused?S.remain-=300000:S.endAt-=300000;save();teacherHTML();tick();break;
+ case't-pause':if(S.paused){S.endAt=Date.now()+S.remain;S.paused=false}else{S.remain=S.endAt-Date.now();S.paused=true}save();teacherHTML();break;
+ case't-hint':S.hints++;save();teacherHTML();break;
+ case't-unlock':S.lockUntil=0;S.streak=0;save();teacherHTML();break;
+ case't-skip':teacherOpen=false;pass();break;
+ case't-reset':if(b.dataset.c){const keep={pin:S.pin,mins:S.mins,sound:S.sound,signoff:S.signoff};S=Object.assign(fresh(),keep);teacherOpen=false;overlay=null;ui={key:''};save();render()}else{b.dataset.c=1;b.textContent='Tap again to confirm reset'}break;
+ }
+});
+document.addEventListener('input',e=>{if(e.target.id==='shift'){ui.shift=+e.target.value;$('#shiftv').textContent=ui.shift;$('#wheel').innerHTML=wheelRows(ui.shift)}});
+document.addEventListener('keydown',e=>{
+ if(e.shiftKey&&(e.key==='T'||e.key==='t')&&!(e.target.tagName==='INPUT'&&e.target.id!=='t-pin')){e.preventDefault();if(S.phase!=='setup'&&S.phase!=='brief'&&!teacherOpen){overlay='pin';teacherOpen=false;renderOverlay()}}
+ if(e.key==='Enter'&&e.target.tagName==='INPUT'){const id=e.target.id;if(id==='t-pin')$('[data-act=pinok]').click();else if(id==='so-pin')$('[data-act=nextroom]').click();else if(id==='fixin')$('[data-act=fixopt]').click();else if(!$('#ov').innerHTML){const s=$('#submit');s&&!s.disabled&&s.click()}}
+});
+
+/* ---------- TICK ---------- */
+function tick(){
+ if(S.phase!=='play'&&S.phase!=='final')return;
+ const r=remaining(),t=$('#timer');
+ if(t){t.textContent=fmt(r);t.className='timer'+(r<0?' over':r<300000?' warn':'')}
+ if(r<300000&&!$('.alarm-edge')&&$('#app'))$('#app').insertAdjacentHTML('beforeend','<div class="alarm-edge"></div>');
+ const m=Math.ceil(r/60000);if(r>0&&m<=5&&!S.beeped[m]){S.beeped[m]=1;save();sfx.alarm();toast(`${m} minute${m>1?'s':''} remaining`)}
+ if(r<=0&&!S.timeupShown){S.timeupShown=true;save();overlay='timeup';sfx.alarm();renderOverlay()}
+ lockUI();
+}
+setInterval(tick,250);
+render();
+}
+</script>
+</body>
+</html>
